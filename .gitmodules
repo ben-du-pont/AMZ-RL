@@ -1,0 +1,3 @@
+[submodule "vehicle_and_lowlevel_control"]
+	path = vehicle_and_lowlevel_control
+	url = git@github.com:AMZ-Driverless/vehicle_and_lowlevel_control.git
