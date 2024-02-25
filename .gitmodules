@@ -1,3 +1,9 @@
 [submodule "vehicle_and_lowlevel_control"]
 	path = vehicle_and_lowlevel_control
 	url = git@github.com:AMZ-Driverless/vehicle_and_lowlevel_control.git
+[submodule "random-track-generator"]
+	path = random-track-generator
+	url = git@github.com:mvanlobensels/random-track-generator.git
+[submodule "KinematicBicycleModel"]
+	path = KinematicBicycleModel
+	url = git@github.com:winstxnhdw/KinematicBicycleModel.git
