@@ -23,20 +23,29 @@ from controller import PurePursuitController, PIDController
 import matplotlib.patches as patches
 from matplotlib.animation import FuncAnimation, PillowWriter
 
-
-
+import os
+from stable_baselines3 import PPO
         
 def main():
     path = Path()
     vehicle = Vehicle()
     dt = 0.1  # Time step
 
-    lookahead_distance = 5.0
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    parent_directory = os.path.dirname(script_directory)
+    # Construct the path to the file in the parent directory
+    model_path = os.path.join(parent_directory, 'trained_models', 'ppo_car_control')
+    model = PPO.load(model_path)
+
+
+
+
+    lookahead_distance = 7.0
     pp_controller = PurePursuitController(2.0, lookahead_distance)
     pid_controller = PIDController(2.0, 0.1, 0.1, dt)
 
     
-
+    
     fig, ax = plt.subplots()
     ax.axis('equal')
     ax.set_xlim(-10, 50)
@@ -81,7 +90,7 @@ def main():
 
     waypoint, = ax.plot([], [], 'rx')
     waypoint_ahead, = ax.plot([], [], 'bo')
-
+    
     def animate(i):
         current_time = i * dt
 
@@ -90,7 +99,6 @@ def main():
         waypoint_idx = path.get_next_waypoint(state['x'], state['y'], path.track_params[3], path.track_params[0],path.track_params[1],path.track_params[2])
         waypoint_x, waypoint_y = path.track_params[0][path.track_params[0]['index'] == waypoint_idx]['x'][0], path.track_params[0][path.track_params[0]['index'] == waypoint_idx]['y'][0]
         waypoint.set_data((waypoint_x, waypoint_y))
-
         
         waypoint_ahead_idx = path.get_a_waypoint(state['x'], state['y'], path.track_params[3], path.track_params[0],path.track_params[1],path.track_params[2], lookahead_distance)
         waypoint_ahead_x, waypoint_ahead_y = path.track_params[0][path.track_params[0]['index'] == waypoint_ahead_idx]['x'][0], path.track_params[0][path.track_params[0]['index'] == waypoint_ahead_idx]['y'][0]
@@ -99,10 +107,16 @@ def main():
         steering_input = 0.45 * np.sin(2 * np.pi * current_time *5)
 
         steering_input = pp_controller.calculate_steering_angle(vehicle.state['x'], vehicle.state['y'], vehicle.state['yaw'], (waypoint_ahead_x, waypoint_ahead_y))
-        throttle_input = pid_controller.control(5, state['v_x'])          
+        throttle_input = pid_controller.control(10, state['v_x'])          
 
         input_command = {'throttle': throttle_input, 'steering': steering_input}
 
+        distance_left, distance_right = path.calculate_distance_to_boundaries(state['x'], state['y'], path.track_params[1], path.track_params[2])
+        track_width, _ = path.get_track_width(state['x'], state['y'], path.track_params[1], path.track_params[2])
+        obs = np.array([state['v_x'], state['v_y'], state['r'], state['a_x'], state['a_y'], state['steer'], float(distance_left), float(distance_right), float(track_width)])
+        action, _ = model.predict(obs) 
+        print(action)
+        input_command = {'throttle': action[1], 'steering': action[0]}
 
         vehicle.update_dynamics(dt, input_command)
         state = vehicle.get_state()

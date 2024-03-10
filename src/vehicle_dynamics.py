@@ -9,17 +9,20 @@ class Vehicle:
 
     def __init__(self):
         
-        # Add the current directory to LD_LIBRARY_PATH
-        current_dir = os.getcwd()
-        current_ld_library_path = os.environ.get('LD_LIBRARY_PATH', '')
-        new_ld_library_path = os.path.abspath('.') + ':' + current_ld_library_path
-        os.environ['LD_LIBRARY_PATH'] = new_ld_library_path
+        ## Get the directory of the currently executing script
+        script_directory = os.path.dirname(os.path.abspath(__file__))
 
-        # Construct the full path to the shared library
-        libvehicle_path = os.path.join(current_dir, 'libvehicle_and_lowlevel_control.so')
+        # Construct the path to the file
+        libvehicle_path = os.path.join(script_directory, 'libs', 'libvehicle_and_lowlevel_control.so')
+
+        # Get the parent directory
+        parent_directory = os.path.dirname(script_directory)
+        # Construct the path to the file in the parent directory
+        libvehicle_parent_path = os.path.join(parent_directory, 'libs', 'libvehicle_and_lowlevel_control.so')
+
 
         # Load the shared library
-        self.lib = ctypes.CDLL(libvehicle_path)
+        self.lib = ctypes.CDLL(libvehicle_parent_path)
 
 
 

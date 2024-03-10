@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from math import radians
 import csv
 import numpy as np
-
+import os
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.interpolate import make_interp_spline
@@ -16,9 +16,15 @@ from cubic_spline_interpolator import generate_cubic_spline
 class Path:
 
     def __init__(self):
-
+        
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        # Get the parent directory
+        parent_directory = os.path.dirname(script_directory)
+        # Construct the path to the file in the parent directory
+        path = os.path.join(parent_directory, 'random-track-generator/random_track.csv')
+    
         # Get path to waypoints.csv
-        path = 'random-track-generator/random_track.csv'
+
 
         # process the track csv file
         self.track_params = self.process_track(path, 'clockwise')
@@ -34,6 +40,9 @@ class Path:
         
         # spline the center line
         self.px, self.py, self.pyaw, _ = generate_cubic_spline(x, y, ds)
+
+        self.lap_count = 0
+        self.end_phase = False
 
     def create_spline(self, points):
         points = np.vstack([points, points[0]])  # Close the loop
@@ -215,13 +224,11 @@ class Path:
 
     def get_track_width(self, point_x, point_y, blue_line, yellow_line):
         point = Point(point_x, point_y)
-
         blue_line_coords = list(blue_line.coords)
         yellow_line_coords = list(yellow_line.coords)
 
         closest_blue_point = min(blue_line_coords, key=lambda x: Point(x).distance(point))
         closest_yellow_point = min(yellow_line_coords, key=lambda x: Point(x).distance(point))
-
         track_width = np.linalg.norm(np.array(closest_blue_point) - np.array(closest_yellow_point))
         intersection_line = LineString([closest_blue_point, closest_yellow_point])
 
@@ -230,6 +237,13 @@ class Path:
     def get_next_waypoint(self, position_x, position_y, center_line, structured_waypoints, blue_line, yellow_line):
         car_point = Point(position_x, position_y)
         center_line = LineString(center_line)
+        try:
+            # Attempt to find the closest point on the line to the car_point
+            closest_point = center_line.interpolate(center_line.project(car_point))
+        except ValueError as e:
+            # Handle the case where the point cannot be projected onto the line
+            print("Error:", e)
+            return 0
         closest_point = center_line.interpolate(center_line.project(car_point))
         closest_waypoint = min(structured_waypoints, key=lambda x: Point(x[1], x[2]).distance(closest_point))
         next_closest_waypoint = (closest_waypoint[0] + 1) % len(structured_waypoints)
@@ -238,6 +252,7 @@ class Path:
         next_closest_waypoint_index = structured_waypoints[next_closest_waypoint][0]
         track_width_at_closest_waypoint, intersection_line = self.get_track_width(structured_waypoints[closest_waypoint_index][1], structured_waypoints[closest_waypoint_index][2], blue_line, yellow_line)
         # define test_line from car_x, car_y to next_closest_waypoint xy, if the test_line intersects with the intersection_line, then the next waypoint is the next_closest_waypoint
+        
         test_line = LineString([(position_x, position_y), next_closest_waypoint_xy])
 
         if test_line.intersects(intersection_line):
@@ -273,4 +288,30 @@ class Path:
 
         
         return target_index
+    
+    def calculate_distance_to_boundaries(self, x, y, blue_line, yellow_line):
+        """
+        Calculate the distance to the left and right boundaries from a given (x, y) position.
 
+        Args:
+        - x, y (float): The x and y coordinates of the position.
+        - blue_line (LineString): The LineString representing the blue track boundary.
+        - yellow_line (LineString): The LineString representing the yellow track boundary.
+
+        Returns:
+        - distance_left (float): The distance to the left boundary.
+        - distance_right (float): The distance to the right boundary.
+        """
+        point = Point(x, y)
+        distance_left = point.distance(blue_line)
+        distance_right = point.distance(yellow_line)
+        return distance_left, distance_right
+
+
+    def increment_lap_count(self, x, y):
+        waypoint = self.get_next_waypoint(self, x, y, self.track_params[3], self.track_params[0], self.track_params[1], self.track_params[2])
+        if waypoint > len(self.track_params[0]) - 10 and self.end_phase == False:
+            self.lap_count += 1
+            self.end_phase == True
+        elif waypoint <= len(self.track_params[0]) - 10:
+            self.end_phase == False
