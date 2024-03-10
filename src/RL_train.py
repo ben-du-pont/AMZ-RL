@@ -18,7 +18,7 @@ os.makedirs(model_dir, exist_ok=True)
 
 # Create the environment
 env_id = 'AMZCarControls-v0'
-env = make_vec_env(env_id, n_envs=100)  # Use vectorized environments to speed up training
+env = make_vec_env(env_id, n_envs=4)  # Use vectorized environments to speed up training
 
 # Initialize the agent
 model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./ppo_car_tensorboard/")
@@ -26,7 +26,7 @@ model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./ppo_car_tensorboard/
 print("Model initialized")
 
 # Train the agent
-total_timesteps = 1e6  # Adjust based on the complexity of your environment and the hardware capabilities
+total_timesteps = 1e2  # Adjust based on the complexity of your environment and the hardware capabilities
 model.learn(total_timesteps=int(total_timesteps))
 print("Model learned")
 # Save the trained model
